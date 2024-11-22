@@ -1,0 +1,390 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_login_api/mausacvakichthuoc/constants1.dart';
+import 'package:flutter_login_api/models/usuario.dart';
+import 'package:flutter_login_api/providers/usuario_provider.dart';
+import 'package:flutter_login_api/providers/usuario_provider1.dart';
+import 'package:flutter_login_api/screens/danhgiakhenthuong/canhan/danhsachcanhandanhgia.dart';
+import 'package:flutter_login_api/screens/danhgiakhenthuong/canhan/trucquandanhgia.dart';
+import 'package:flutter_login_api/screens/danhgiakhenthuong/tongket.dart';
+import 'package:flutter_login_api/screens/kiemduyetbieumau/canhan/danhsachcanhankd.dart';
+import 'package:flutter_login_api/screens/kiemduyetbieumau/khoaphong/khoaphongbm.dart';
+import 'package:flutter_login_api/screens/kiemduyetbieumau/khoaphongcn/danhsachbieumauchucvu.dart';
+import 'package:flutter_login_api/screens/kiemduyetbieumau/timkiem.dart';
+import 'package:flutter_login_api/screens/main/components/side_menu.dart';
+import 'package:flutter_login_api/screens/trangchu/canhan/giaodien.dart';
+import 'package:flutter_login_api/screens/trangchu/truongphong/truongphong.dart';
+import 'package:provider/provider.dart';
+
+const String manLookRightImageUrl =
+    'https://media.istockphoto.com/id/1208313447/vi/vec-to/kh%C3%A1i-ni%E1%BB%87m-l%C3%A0m-vi%E1%BB%87c-nh%C3%B3m-v%E1%BB%9Bi-c%C3%A2u-%C4%91%E1%BB%91-x%C3%A2y-d%E1%BB%B1ng-m%E1%BB%8Di-ng%C6%B0%E1%BB%9Di-l%C3%A0m-vi%E1%BB%87c-c%C3%B9ng-v%E1%BB%9Bi-c%C3%A1c-y%E1%BA%BFu-t%E1%BB%91-c%C3%A2u-%C4%91%E1%BB%91.jpg?s=1024x1024&w=is&k=20&c=DXGA_sVC8tgYd_cdMMb5eiQOBq511dXt5x24b3zXRME=';
+const String dogImageUrl =
+    'https://png.pngtree.com/png-clipart/20230330/original/pngtree-form-line-icon-png-image_9010067.png';
+const String womanLookLeftImageUrl =
+    'https://www.bsc.com.vn/Sites/STOCK/SiteRoot/quan-ly-tai-chinh-ca-nhan-vo-cung-quan-trong.jpg';
+
+final kGreyBackground = Colors.grey[200];
+
+class TrangChuDG extends StatefulWidget {
+  final String userEmail;
+  final String displayName;
+  final String? photoURL;
+
+  const TrangChuDG({
+    Key? key,
+    required this.userEmail,
+    required this.displayName,
+    this.photoURL,
+  }) : super(key: key);
+
+  @override
+  State<TrangChuDG> createState() => _TrangChuBMState();
+}
+
+class _TrangChuBMState extends State<TrangChuDG> {
+  late String searchString;
+  List<Widget> searchResultTiles = [];
+    List<Usuario> nhanViens = [];
+  bool isLoading = true;
+
+  int currentYear = DateTime.now().year;
+
+  Map<String, String> statusMap = {};
+  Map<String, double> tyleHoanThanhMap = {};
+
+  @override
+  void initState() {
+    searchString = '';
+    super.initState();
+    _fetchNhanViens();
+  }
+
+ Future<void> _fetchNhanViens() async {
+    try {
+      final usuarioProvider =
+          Provider.of<Usuario_provider>(context, listen: false);
+      await usuarioProvider.getNhanVien();
+      setState(() {
+        nhanViens = usuarioProvider.usuarios;
+        isLoading = false;
+      });
+      // await _fetchStatuses();
+      await _fetchTyLeHoanThanh();
+    } catch (error) {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+    Future<void> _fetchTyLeHoanThanh() async {
+    final year = DateTime.now().year;
+    if (year != null) {
+      for (var nhanVien in nhanViens) {
+        try {
+          double tyLeHoanThanh =
+              await Provider.of<Usuario_provider1>(context, listen: false)
+                  .GetTyLeHoanThanhByMaNVvaNam(nhanVien.maNv, year);
+          if (tyLeHoanThanh < 0) {
+            tyLeHoanThanh = 0.0;
+          }
+          tyleHoanThanhMap[nhanVien.maNv] = tyLeHoanThanh;
+        } catch (error) {
+          tyleHoanThanhMap[nhanVien.maNv] = 0.0;
+        }
+      }
+      setState(() {});
+    }
+  }
+
+ @override
+Widget build(BuildContext context) {
+  var listViewPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 24);
+  return Scaffold(
+    backgroundColor: bgColor,
+    drawer: MediaQuery.of(context).size.width < 600 ?  SideMenu( userEmail: widget.userEmail,
+                    displayName: widget.displayName,
+                    photoURL: widget.photoURL!,) : null,
+    body: LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 600) {
+          return Row(
+            children: [
+              _buildSideMenu(),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderSection(),
+                      Expanded(child: _buildContent(listViewPadding)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        } else {
+          return Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+                child: Column(
+                  children: [
+                    _buildHeaderSection(),
+                    Expanded(child: _buildContent(listViewPadding)),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 16,
+                left: 16,
+                child: IconButton(
+                  icon: const Icon(Icons.menu, size: 32, color: Colors.black),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+      },
+    ),
+  );
+}
+
+Widget _buildHeaderSection() {
+  // Tính toán số KPI hoàn thành và chưa hoàn thành
+  
+  int soNhanVienKhenThuong = nhanViens
+      .where((nhanVien) => (tyleHoanThanhMap[nhanVien.maNv] ?? 0.0) > 70)
+      .length;
+  int soNhanVienKyLuat = nhanViens
+      .where((nhanVien) => (tyleHoanThanhMap[nhanVien.maNv] ?? 0.0) < 50)
+      .length;
+  int soKPIHoanThanh = soNhanVienKhenThuong + soNhanVienKyLuat;
+  int soKPICHuaHoanThanh = nhanViens.length - soKPIHoanThanh;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Xin chào, ${widget.displayName}!',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Đây là bảng quản lý đánh giá KPI theo phòng. Hãy xem qua các nhiệm vụ và kết quả.',
+        style: TextStyle(
+          fontSize: 16,
+          color: Colors.black54,
+        ),
+      ),
+      const SizedBox(height: 16),
+
+      // KPI Statistics Row
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatisticTile('Số lượng nhân viên', '$soKPIHoanThanh'),
+          _buildStatisticTile('Số nhân viên đạt khen thưởng', '$soNhanVienKhenThuong'),
+          _buildStatisticTile('Số nhân viên kỷ luật', '$soNhanVienKyLuat'),
+          
+        ],
+      ),
+      const SizedBox(height: 24),
+    ],
+  );
+}
+
+
+Widget _buildStatisticTile(String title, String value) {
+  return Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.blueAccent,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.white70,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+
+  Widget _buildSideMenu() {
+    return Container(
+      width: MediaQuery.of(context).size.width * 0.2,
+      color: bgColor1,
+      child: Column(
+        children: [
+          DrawerHeader(
+            child: Image.asset(
+                "assets/images/Tiêu_đề_Website_BV_16_-removebg-preview.png"),
+          ),
+          DrawerListTile(
+            title: "KPI",
+            svgSrc: "assets/icons/menu_dashboard.svg",
+            press: () {},
+          ),
+          DrawerListTile(
+            title: "Tài liệu",
+            svgSrc: "assets/icons/menu_doc.svg",
+            press: () {},
+          ),
+          DrawerListTile(
+            title: "Thông báo",
+            svgSrc: "assets/icons/menu_notification.svg",
+            press: () {},
+          ),
+          DrawerListTile(
+            title: "Thông tin cá nhân",
+            svgSrc: "assets/icons/menu_profile.svg",
+            press: () {},
+          ),
+          DrawerListTile(
+            title: "Cài đặt",
+            svgSrc: "assets/icons/menu_setting.svg",
+            press: () {},
+          ),
+          DrawerListTile(
+            title: "Quay lại",
+            svgSrc: "assets/icons/menu_setting.svg",
+            press: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Giaodien1(
+                    userEmail: widget.userEmail,
+                    displayName: widget.displayName,
+                    photoURL: widget.photoURL!,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+ Widget _buildContent(EdgeInsets listViewPadding) {
+  return searchString.isNotEmpty
+      ? GridView.count(
+          padding: listViewPadding,
+          crossAxisCount: 2, // Số cột của lưới
+          mainAxisSpacing: 16, // Khoảng cách giữa các hàng
+          crossAxisSpacing: 16, // Khoảng cách giữa các cột
+          childAspectRatio: 1.0, // Tỉ lệ khung hình để tạo hình vuông
+          children: searchResultTiles,
+        )
+      : GridView.count(
+          padding: listViewPadding,
+          crossAxisCount: 2, // Số cột của lưới
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.0, // Tỉ lệ khung hình để tạo hình vuông
+          children: [
+            _buildUserTile(
+              imageUrl: manLookRightImageUrl,
+              title: 'Khoa phòng',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TongKet(
+                    userEmail: widget.userEmail ?? '',
+                    displayName: widget.displayName ?? '',
+                    photoURL: widget.photoURL ?? '',
+                  ),
+                ),
+              ),
+            ),
+          
+            _buildUserTile(
+              imageUrl: womanLookLeftImageUrl,
+              title: 'Cá nhân',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DanhsachCNDG(
+                    userEmail: widget.userEmail,
+                    displayName: widget.displayName,
+                    photoURL: widget.photoURL,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+}
+
+
+  Widget _buildUserTile(
+      {required String imageUrl,
+      required String title,
+      required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 200,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 4.0,
+              spreadRadius: 1.0,
+              offset: Offset(2, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              imageUrl,
+              color: kGreyBackground,
+              colorBlendMode: BlendMode.darken,
+              alignment: Alignment.topCenter,
+              fit: BoxFit.cover,
+            ),
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              alignment: Alignment.center,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
